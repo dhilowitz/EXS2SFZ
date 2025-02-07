@@ -43,6 +43,8 @@ void DSPresetConverter::parseDSEXS24(DSEXS24 exs24, juce::String samplePath, juc
         }
     }
     
+    int highestSequenceNumber = 0;
+    
     // Iterate through the groups and add their respective samples
     for(int groupIndex = -1; groupIndex < groups.size(); groupIndex++) {
         bool hasSamples = false;
@@ -61,6 +63,9 @@ void DSPresetConverter::parseDSEXS24(DSEXS24 exs24, juce::String samplePath, juc
         
         if(group.seqNumber != 0) {
             dsGroup.setProperty("seqPosition", group.seqNumber, nullptr);
+            if(group.seqNumber > highestSequenceNumber) {
+                highestSequenceNumber = group.seqNumber;
+            }
         }
 //        dsGroup.setProperty("_exsSequence", group.exsSequence, nullptr);
         
@@ -129,6 +134,20 @@ void DSPresetConverter::parseDSEXS24(DSEXS24 exs24, juce::String samplePath, juc
         }
         if(hasSamples) {
             groupsVT.appendChild(dsGroup, nullptr);
+        }
+    }
+    
+    // Go back through and set seqLength as needed
+    for(juce::ValueTree groupVT : groupsVT) {
+        if(groupVT.hasProperty("seqPosition")) {
+            groupVT.setProperty("seqLength", highestSequenceNumber, nullptr);
+            groupVT.setProperty("seqMode", "round_robin", nullptr);
+        }
+        for(juce::ValueTree sampleVT : groupVT) {
+            if(sampleVT.hasProperty("seqPosition")) {
+                sampleVT.setProperty("seqLength", highestSequenceNumber, nullptr);
+                sampleVT.setProperty("seqMode", "round_robin", nullptr);
+            }
         }
     }
     
@@ -205,6 +224,12 @@ void DSPresetConverter::translateSFZRegionProperties(juce::ValueTree sfzRegion, 
             dsEntity.setProperty("rootNote", value, nullptr);
         } else if(key == "sample") {
             dsEntity.setProperty("path", value, nullptr);
+        } else if(key == "seq_position") {
+            dsEntity.setProperty("seqPosition", value, nullptr);
+            dsEntity.setProperty("seqMode", "round_robin", nullptr);
+        } else if(key == "seq_length") {
+            dsEntity.setProperty("seqLength", value, nullptr);
+            dsEntity.setProperty("seqMode", "round_robin", nullptr);
         } else if(key == "sw_previous") {
             dsEntity.setProperty("previousNote", value, nullptr);
         } else if(key == "trigger") {
@@ -309,10 +334,10 @@ juce::String DSPresetConverter::getSFZ() {
         if(valueTree.hasProperty("rootNote")) {
             sfzFile = sfzFile + "pitch_keycenter=" + valueTree.getProperty("rootNote").toString() + " ";
         }
-        if(valueTree.hasProperty("loNote") && valueTree.getProperty("loNote").toString() != "0") {
+        if(valueTree.hasProperty("loNote") ) {
             sfzFile = sfzFile + "lokey=" + valueTree.getProperty("loNote").toString() + " ";
         }
-        if(valueTree.hasProperty("hiNote") && valueTree.getProperty("hiNote").toString() != "127") {
+        if(valueTree.hasProperty("hiNote")) {
             sfzFile = sfzFile + "hikey=" + valueTree.getProperty("hiNote").toString() + " ";
         }
         if(valueTree.hasProperty("loVel") && valueTree.getProperty("loVel").toString() != "0") {
@@ -355,17 +380,17 @@ juce::String DSPresetConverter::getSFZ() {
         if(valueTree.hasProperty("decay")) {
             sfzFile = sfzFile + "ampeg_decay=" + valueTree.getProperty("decay").toString() + " ";
         }
+        if(valueTree.hasProperty("seqPosition")) {
+            sfzFile = sfzFile + "seq_position=" + valueTree.getProperty("seqPosition").toString() + " ";
+        }
+        if(valueTree.hasProperty("seqLength")) {
+            sfzFile = sfzFile + "seq_length=" + valueTree.getProperty("seqLength").toString() + " ";
+        }
         if(valueTree.hasProperty("tags")) {
             if(valueTree.getProperty("tags").toString().contains("voice-group-")) {
                 sfzFile = sfzFile + "group=" + valueTree.getProperty("tags").toString().replace("voice-group-", "") + " ";
             }
         }
-        
-        
-        
-        
-        
-        
         
         if(valueTree.hasProperty("silencedByTags")) {
             sfzFile = sfzFile + "off_by=" + valueTree.getProperty("silencedByTags").toString().replace("voice-group-", "") + " ";
