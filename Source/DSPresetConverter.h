@@ -14,8 +14,16 @@
 
 class DSPresetConverter {
 public:
-    void parseDSEXS24(DSEXS24 exs24, juce::String samplePath, juce::File outputDir);
+    DSPresetConverter();
+    void parseDSEXS24(DSEXS24 exs24);
     void parseSFZValueTree(juce::ValueTree valueTree);
+    
+    bool huntForSamples(juce::File inputDirectory, juce::String sampleSetName);
+    bool convertPathsToDesiredDirectory(juce::File inputDirectory, juce::String desiredDirectoryName);
+    bool convertPathsToRelative(juce::File inputDirectory);
+    bool convertEXSLoopCrossfadePoints();
+    bool copySamplesOverToNewDirectory(juce::File rootOutputDirectory, juce::String sampleSetName, bool skipAudioProcessing, int overrideBitrate);
+    
     
     juce::String getXML() {
         juce::XmlElement::TextFormat format;
@@ -23,7 +31,6 @@ public:
 //        format.newLineChars = "";
         return valueTree.toXmlString(format);
     }
-    
     juce::String getSFZ();
     
     juce::ValueTree getValueTree() { return valueTree; }
@@ -35,6 +42,7 @@ public:
         headerLevelRegion
     };
 private:
+    juce::AudioFormatManager audioFormatManager;
     juce::ValueTree valueTree;
     void translateSFZRegionProperties(juce::ValueTree sfzRegion, juce::ValueTree &dsSample, HeaderLevel level);
     void addGenericUI();
